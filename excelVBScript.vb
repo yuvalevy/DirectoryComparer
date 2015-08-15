@@ -26,7 +26,7 @@ End Sub
 Sub DeleteEmptyRows()
     
     ' Dim cellsForDelete
-    Set myCells = ActiveSheet.UsedRange
+    Set myCells = shtActive.UsedRange
     
     Dim rowCount As Long
     Dim colCount As Long
@@ -74,11 +74,10 @@ Sub CalcFilesByDirectory(directory As String)
     Dim cellLetter As String
     
     ' ##Get Configuration
-    Set directoryPattern = ActiveWorkbook.Sheets(2).Cells(3, 2).Value
-    Set srcStartCell = ActiveWorkbook.Sheets(2).Cells(4, 2).Value
-    Set desStartCell = ActiveWorkbook.Sheets(2).Cells(5, 2).Value
-    Set lastWritenInRow = ActiveWorkbook.Sheets(2).Cells(1, 2).Value
-    
+    Set directoryPattern = shtConfig.Cells(3, 2).Value
+    Set srcStartCell = shtConfig.Cells(4, 2).Value
+    Set desStartCell = shtConfig.Cells(5, 2).Value
+    Set lastWritenInRow = shtConfig.Cells(1, 2).Value
     
     ' ##Checks if last char in directory is '\'
     If Right(directoryPath, 1) <> "\" Then
