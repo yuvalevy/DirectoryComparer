@@ -1,4 +1,11 @@
 Public inDebugMode As Boolean
+Public lastWritenInRow As String
+
+Private Sub CopyButton_Click()
+    
+    
+    Call FixAllButtons
+End Sub
 
 Private Sub RedButton_Click()
     inDebugMode = False
@@ -16,10 +23,9 @@ Private Sub CalcButton_Click()
     inDebugMode = False
     Call EditingSheet(False)
      
-    Call AddOrRemoveFiles
+    Call AddAndMarkFiles
     
     Call FixAllButtons
-    Call DeleteEmptyRows
     Call EditingSheet(True)
 End Sub
 
@@ -103,10 +109,8 @@ Sub DeleteEmptyRows()
 End Sub
 
 
-Sub AddOrRemoveFiles()
-    
-    Dim lastWritenInRow As String
-    
+Sub AddAndMarkFiles()
+       
     Dim srcStartCell As String
     Dim desStartCell As String
     Dim srcEndCell As String
@@ -117,10 +121,7 @@ Sub AddOrRemoveFiles()
     
     Dim directoryCell As String
     Dim directoryPath As String
-    Dim directoryPattern As String
-    Dim fileName As String
-     
-    Dim markingRow As String
+    Dim filesPattern As String
     
     
     lastWritenInRow = shtActive.UsedRange.Rows.Count
@@ -128,7 +129,7 @@ Sub AddOrRemoveFiles()
     ' ##Get Configuration
     directoryCell = shtConfig.Cells(1, 2).Value 'source directory cell
     cellSrcLetter = shtConfig.Cells(2, 2).Value  'source cell letter
-    directoryPattern = shtConfig.Cells(3, 2).Value 'directory pattern
+    filesPattern = shtConfig.Cells(3, 2).Value 'directory pattern
     srcStartCell = shtConfig.Cells(4, 2).Value 'srcStartCell
     desStartCell = shtConfig.Cells(5, 2).Value 'desStartCell
     'cellDestLetter = shtConfig.Cells(6, 2).Value 'destination cell letter
@@ -138,50 +139,125 @@ Sub AddOrRemoveFiles()
     ' ##Get directory path from sheet
     directoryPath = Range(directoryCell).Value
     
-    ' ##Checks if last char in directory is '\'
-    If Right(directoryPath, 1) <> "\" Then
-        directoryPath = directoryPath & "\"
-    End If
-     
-    fileName = Dir(directoryPath & "*")
+    If GetAttr(directoryPath) = vbDirectory Then
     
-    ' ##Marking all cells in color red (3)
-    Call MarkCells(Range(srcRangeValue), 3)
-
-    Dim i As Integer
-    Dim foundVal As String
-
-    i = 1
-    Do While fileName <> ""
-        Call MessageBox(fileName)
-        Set vals = Range(srcRangeValue).Find(fileName)
-        
-        If (vals Is Nothing) Then
-            ' ##Adds new file to the last row
-            lastWritenInRow = lastWritenInRow + 1
-            markingRow = cellSrcLetter & lastWritenInRow
-            Range(markingRow).Value = fileName
-        Else
-            markingRow = cellSrcLetter & vals.Row
+        If lastWritenInRow < 4 Then
+            lastWritenInRow = 4
         End If
         
-        ' ##Mark existing file in default color
-        Call MarkCells(Range(markingRow), 0)
-
-        i = i + 1
-        fileName = Dir()
-    Loop
-
-    'fileName = Dir(directoryPath & directoryPattern)
-      
-    'Range(cellSrcLetter & Index).Value (fileName)
     
+        ' ##Checks if last char in directory is '\'
+        If Right(directoryPath, 1) <> "\" Then
+            directoryPath = directoryPath & "\"
+        End If
+        
+        ' ##Marking all cells in color red (3)
+        Call MarkCells(Range(srcRangeValue), 3)
+    
+        
+        Call MarkDirectory(directoryPath, filesPattern, srcRangeValue, cellSrcLetter)
+
+    Else
+        MsgBox "Directory at " & directoryCell & " does not exists"
+    End If
     MessageBox "Finish CalcFilesByDirectory"
     
 
 End Sub
 
 ' ### HELP SUBs
+
+Private Sub MarkFiles(subDirectory As String, filesPattern As String, srcRangeValue As String, cellSrcLetter As String)
+    
+    Dim markingRow As String
+    Dim foundVal As String
+     
+    fileName = GetFiles(subDirectory, filesPattern)
+    
+    For Each fn In fileName
+        If fn <> "" Then
+            Set vals = Range(srcRangeValue).Find(fn)
+            
+            If (vals Is Nothing) Then
+                ' ##Adds new file to the last row
+                lastWritenInRow = lastWritenInRow + 1
+                markingRow = cellSrcLetter & lastWritenInRow
+            
+                Range(markingRow).Value = fn
+            Else
+                markingRow = cellSrcLetter & vals.Row
+            End If
+            
+            ' ##Mark existing file in default color
+            Call MarkCells(Range(markingRow), 0)
+        End If
+    Next
+ 
+End Sub
+
+Private Sub MarkDirectory(directory As String, filesPattern As String, srcRangeValue As String, cellSrcLetter As String)
+    
+    Dim drctVal As String
+    Call MarkFiles(directory, filesPattern, srcRangeValue, cellSrcLetter)
+      
+     myDirectories = GetDirectories(directory)
+      
+    For i = 0 To UBound(myDirectories) Step 1
+        drctVal = myDirectories(i)
+        If drctVal <> "" Then
+            Call MarkFiles(drctVal, filesPattern, srcRangeValue, cellSrcLetter)
+            Call MarkDirectory(drctVal, filesPattern, srcRangeValue, cellSrcLetter)
+        End If
+    Next
+
+End Sub
+
+Private Function GetDirectories(path As String) As String()
+    
+    Dim fullpath As String
+    Dim folderName As String
+    Dim i As Long
+    Dim myArray(1000) As String
+  
+    folderName = Dir(path, vbDirectory)
+    Do While folderName <> ""
+        If folderName <> ".." And folderName <> "." Then
+       fullpath = path & folderName
+        
+            If GetAttr(fullpath) = vbDirectory Then
+                myArray(i) = fullpath & "\"
+                i = i + 1
+            End If
+        End If
+        folderName = Dir
+    Loop
+    
+    GetDirectories = myArray
+End Function
+
+Private Function GetFiles(path As String, pattern As String) As String()
+    
+    Dim fullpath As String
+    Dim fileName As String
+    Dim i As Long
+    Dim myArray(1000) As String
+ 
+    fileName = Dir(path & pattern)
+    
+    Do While fileName <> ""
+        If fileName <> ".." And fileName <> "." Then
+            fullpath = path & fileName
+            If GetAttr(fullpath) = 32 Then
+                myArray(i) = fullpath
+                i = i + 1
+            End If
+        End If
+        fileName = Dir()
+    Loop
+    
+    GetFiles = myArray
+End Function
+
 
 Private Sub MessageBox(messageToDesplay As String)
     If inDebugMode = True Then
@@ -193,10 +269,10 @@ Private Sub EditingSheet(setState As Boolean)
     
     If (inDebugMode = False) Then
    
-        With Application
-            .Calculation = xlCalculationManual
-            .ScreenUpdating = setState
-        End With
+        'With Application
+        '    .Calculation = xlCalculationManual
+       '     .ScreenUpdating = setState
+        'End With
         
     End If
     
@@ -218,9 +294,9 @@ End Sub
 
 Private Sub MarkCells(rng As Range, color As String)
     For Each cell In rng
-        
-       cell.Interior.ColorIndex = color
-        
+        If cell.Row <> 3 Then
+            cell.Interior.ColorIndex = color
+        End If
     Next cell
 End Sub
 
