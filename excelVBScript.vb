@@ -4,11 +4,10 @@ Private Sub CalcButton_Click()
     inDebugMode = True
     Call EditingSheet(False)
     
-    Dim directoryPath As String, directoryPattern As String
+    Dim directoryPath As String
     directoryPath = Range("B2")
-    directoryPattern = "*.txt"
      
-    Call CalcFilesByDirectory(directoryPath, directoryPattern)
+    Call CalcFilesByDirectory(directoryPath)
     
     Call FixButton(CalcButton, 87, 70)
     Call EditingSheet(True)
@@ -70,25 +69,21 @@ Sub DeleteEmptyRows()
 
 End Sub
 
-Sub CalcFilesByDirectory(directory As String, directoryPattern As String)
+Sub CalcFilesByDirectory(directory As String)
     
     Dim cellLetter As String
     
-    Dim srcStartCell
-    Dim desStartCell
+    ' ##Get Configuration
+    Set directoryPattern = ActiveWorkbook.Sheets(2).Cells(3, 2).Value
+    Set srcStartCell = ActiveWorkbook.Sheets(2).Cells(4, 2).Value
+    Set desStartCell = ActiveWorkbook.Sheets(2).Cells(5, 2).Value
+    Set lastWritenInRow = ActiveWorkbook.Sheets(2).Cells(1, 2).Value
     
-    srcStartCell = "C3"
-    desStartCell = "D3"
-   
     
     ' ##Checks if last char in directory is '\'
     If Right(directoryPath, 1) <> "\" Then
         directoryPath = directoryPath & "\"
     End If
-    
-    Set lastWritenInRow = ActiveWorkbook.Sheets(2).Cells(1, 2).Value
-    
-    
     
     
     Set srcLst = Range()
