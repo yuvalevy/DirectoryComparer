@@ -8,12 +8,12 @@ Public cellStatusLetter As String
 
 Private Sub CopyButton_Click()
     inDebugMode = False
-    Call EditingSheet(False)
+    'Call EditingSheet(False)
      
     Call CopyFiles
 
     Call FixAllButtons
-    Call EditingSheet(True)
+    'Call EditingSheet(True)
 End Sub
 
 Private Sub RedButton_Click()
@@ -64,7 +64,7 @@ Sub DeleteRedLines()
       
     For rwIndex = rowCount To 4 Step -1
         currentCell = cellSrcLetter & rwIndex
-        If Range(currentCell).Interior.ColorIndex = 3 Then
+        If IsRowMarkedRed(rwIndex) Then
             Call DeleteRow(rwIndex)
         End If
     Next
@@ -132,10 +132,10 @@ Private Sub CopyFiles()
     lastWritenInRow = GetLastRow
     
     For rwIndex = 4 To lastWritenInRow
-        If GetStatusResult(rwIndex) <> 100 Then
-            If rwIndex > 3 Then
-                Call CopySingleFile(rwIndex)
-            End If
+        If GetStatusResult(rwIndex) <> 100 And Not IsRowMarkedRed(rwIndex) Then
+            
+            Call CopySingleFile(rwIndex)
+           
         End If
     Next
 
@@ -298,10 +298,20 @@ Private Function GetStatusResult(rwIndex As Long) As Integer
             GetStatusResult = 3
         Case "Copied"
             GetStatusResult = 100
+        Case Else
+            GetStatusResult = -1
     End Select
     
 End Function
 
+Private Function IsRowMarkedRed(rwIndex As Long) As Boolean
+
+    Dim sttsCell As String
+    sttsCell = cellSrcLetter & rwIndex
+   
+    IsRowMarkedRed = Range(sttsCell).Interior.ColorIndex = 3
+    
+End Function
 
 Private Sub MarkFiles(subDirectory As String, srcRangeValue As String)
     
