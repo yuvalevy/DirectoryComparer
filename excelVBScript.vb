@@ -111,7 +111,7 @@ Sub AddAndMarkFiles()
     
     srcRangeValue = GetCurrentActiveRange
     
-   If IsDirectoryOK Then
+    If IsDirectoryOK Then
         ' ##Marking all cells in color red (3)
         Call MarkCells(Range(srcRangeValue), 3)
         
@@ -159,11 +159,11 @@ Private Sub CopySingleFile(rwIndex As Long)
     destinationFile = Range(dstCell).Value
     
     ' ##Making sure program can access files
-    statusIndex = 1
+    statusIndex = 0
     rslt = True
     Do While (statusIndex < 4 And rslt)
-        rslt = ChecksBeforeCopy(statusIndex, sourceFile, destinationFile, rwIndex)
         statusIndex = statusIndex + 1
+        rslt = ChecksBeforeCopy(statusIndex, sourceFile, destinationFile, rwIndex)
     Loop
     
     If rslt = True Then
@@ -249,7 +249,7 @@ Private Function ChecksBeforeCopy(statusIndex As Integer, src As String, des As 
                 ChecksBeforeCopy = False
             End If
         Case 3
-            ' ##Checks if source file exists
+            ' ##Checks if source file not exists
             If Dir(src) = "" Then
                 MessageBox ("Source file does not exists in row " & row)
                 ChecksBeforeCopy = False
@@ -316,6 +316,7 @@ End Function
 Private Sub MarkFiles(subDirectory As String, srcRangeValue As String)
     
     Dim markingRow As String
+    Dim markingColor As Integer
     Dim foundVal As String
      
     fileName = GetFiles(subDirectory)
@@ -328,14 +329,15 @@ Private Sub MarkFiles(subDirectory As String, srcRangeValue As String)
                 ' ##Adds new file to the last row
                 lastWritenInRow = lastWritenInRow + 1
                 markingRow = cellSrcLetter & lastWritenInRow
-            
+                markingColor = 4
                 Range(markingRow).Value = fn
             Else
                 markingRow = cellSrcLetter & vals.row
+                markingColor = 0
             End If
             
             ' ##Mark existing file in default color
-            Call MarkCells(Range(markingRow), 0)
+            Call MarkCells(Range(markingRow), markingColor)
         End If
     Next
  
@@ -436,8 +438,8 @@ Private Sub FixButton(button As MSForms.CommandButton, top As Integer, left As I
     button.top = top
     button.left = left
 End Sub
-
-Private Sub MarkCells(rng As Range, color As String)
+    
+Private Sub MarkCells(rng As Range, color As Integer)
     For Each cell In rng
         If cell.row <> 3 Then
             cell.Interior.ColorIndex = color
