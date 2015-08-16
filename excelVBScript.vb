@@ -1,10 +1,17 @@
 Public inDebugMode As Boolean
-Public lastWritenInRow As String
+Public lastWritenInRow As Long
+Public workingDirectory As String
+Public filesPattern As String
+Public cellSrcLetter As String
 
 Private Sub CopyButton_Click()
-    
-    
+    inDebugMode = False
+    Call EditingSheet(False)
+     
+    Call CopyFiles
+
     Call FixAllButtons
+    Call EditingSheet(True)
 End Sub
 
 Private Sub RedButton_Click()
@@ -44,19 +51,17 @@ End Sub
 
 
 Sub DeleteRedLines()
-    
-    Set myCells = shtActive.UsedRange
-    
+
     Dim rowCount As Long
-    Dim colCount As Long
     Dim rwIndex As Long
-    Dim cellSrcLetter As String
     Dim currentCell As String
     
-    cellSrcLetter = shtConfig.Cells(2, 2).Value  'source cell letter
-    rowCount = myCells.Rows.Count
-    colCount = myCells.Columns.Count
-     
+    If cellSrcLetter = "" Then
+        Call SetCellSrcLetter
+    End If
+    
+    rowCount = GetLastRow
+      
     For rwIndex = rowCount To 4 Step -1
         currentCell = cellSrcLetter & rwIndex
         If Range(currentCell).Interior.ColorIndex = 3 Then
@@ -68,37 +73,28 @@ End Sub
 
 
 Sub DeleteEmptyRows()
-    
-    Set myCells = shtActive.UsedRange
-    
+   
     Dim rowCount As Long
-    Dim colCount As Long
     Dim rwIndex As Long
     Dim isWholeRowEmpty As Boolean
     
-    rowCount = myCells.Rows.Count
-    colCount = myCells.Columns.Count
+    rowCount = GetLastRow
     
-    Call MessageBox("Last Row: " & rowCount & " Last Col: " & colCount)
+    Call MessageBox("Last Row: " & rowCount)
     
-    ReDim myArray(rowCount, colCount) As Object
-    
-    
-    ' ## check the bowndries
-    ' If cell2.Row > 3 And (cell2.Column = 3 Or cell2.Column = 4) Then
-      
     For rwIndex = rowCount To 4 Step -1
         wholeRowEmpty = True
        
-        For clIndex = 2 To 3
-            Call MessageBox(myCells(rwIndex, clIndex).Value)
-            
-            If myCells(rwIndex, clIndex) <> "" Then
-                Call MessageBox(clIndex & "<>")
-                wholeRowEmpty = False
-            End If
+        'For colIndex = 2 To 3
+        '    If Cells(rwIndex, colIndex) <> "" Then
+        '        wholeRowEmpty = False
+        '    End If
+        'Next
         
-        Next
+        If Cells(rwIndex, 2) <> "" Or Cells(rwIndex, 3) <> "" Then
+            wholeRowEmpty = False
+        End If
+    
         
         If wholeRowEmpty = True Then
             Call DeleteRow(rwIndex)
@@ -110,70 +106,139 @@ End Sub
 
 
 Sub AddAndMarkFiles()
-       
+
+    Dim srcRangeValue As String '''
+    
+    srcRangeValue = GetCurrentActiveRange
+    
+   If IsDirectoryOK Then
+        ' ##Marking all cells in color red (3)
+        Call MarkCells(Range(srcRangeValue), 3)
+        
+        ' ##Starting to check all files in directory and subdirectory
+        Call MarkFiles(workingDirectory, srcRangeValue)
+        Call MarkDirectory(workingDirectory, srcRangeValue)
+    Else
+        MsgBox "Source folder does not exists"
+    End If
+
+End Sub
+
+Private Sub CopyFiles()
+
+
+
+End Sub
+
+Private Sub CopySingleFile(sourceCell As String, destinationCell As String, statusCell As String)
+    
+    Dim sourceFile As String
+    Dim destinationFile As String
+    Dim i As Integer
+    Dim rslt As Boolean
+    Dim rowNum As String
+    
+    sourceFile = Range(sourceCell).Value
+    destinationFile = Range(destinationCell).Value
+    i = 1
+    rslt = True
+    rowNum = Right(statusCell, 1)
+    
+    
+    Do While (i <> 3 Or Not rslt)
+        rslt = ChecksBeforeCopy(i, sourceFile, destinationFile, rowNum)
+        i = i + 1
+    Next
+    
+ 
+    Call FileSystem.FileCopy(sourceFile, destinationFile)
+    
+End Sub
+
+' ### HELP SUBs
+
+Private Function GetCurrentActiveRange() As String
+    
     Dim srcStartCell As String
     Dim desStartCell As String
     Dim srcEndCell As String
     Dim srcRangeValue As String
     
-    Dim cellSrcLetter As String
-    'Dim cellDestLetter As String
-    
-    Dim directoryCell As String
-    Dim directoryPath As String
-    Dim filesPattern As String
-    
-    
-    lastWritenInRow = shtActive.UsedRange.Rows.Count
-    
     ' ##Get Configuration
-    directoryCell = shtConfig.Cells(1, 2).Value 'source directory cell
-    cellSrcLetter = shtConfig.Cells(2, 2).Value  'source cell letter
-    filesPattern = shtConfig.Cells(3, 2).Value 'directory pattern
+    Call SetCellSrcLetter
     srcStartCell = shtConfig.Cells(4, 2).Value 'srcStartCell
     desStartCell = shtConfig.Cells(5, 2).Value 'desStartCell
-    'cellDestLetter = shtConfig.Cells(6, 2).Value 'destination cell letter
+    
+    lastWritenInRow = GetLastRow
     srcEndCell = cellSrcLetter & lastWritenInRow
     srcRangeValue = srcStartCell & ":" & srcEndCell
-    
+
+    GetCurrentActiveRange = srcRangeValue
+End Function
+
+Private Sub SetCellSrcLetter()
+     cellSrcLetter = shtConfig.Cells(2, 2).Value  'source cell letter
+End Sub
+
+
+Private Function IsDirectoryOK() As Boolean
+  
+    Dim directoryCell As String
+    Dim directoryPath As String
+   
+    directoryCell = shtConfig.Cells(1, 2).Value 'source directory cell
+    filesPattern = shtConfig.Cells(3, 2).Value  'directory pattern
+  
+
     ' ##Get directory path from sheet
     directoryPath = Range(directoryCell).Value
     
-    If GetAttr(directoryPath) = vbDirectory Then
-    
-        If lastWritenInRow < 4 Then
-            lastWritenInRow = 4
-        End If
-        
-    
-        ' ##Checks if last char in directory is '\'
-        If Right(directoryPath, 1) <> "\" Then
-            directoryPath = directoryPath & "\"
-        End If
-        
-        ' ##Marking all cells in color red (3)
-        Call MarkCells(Range(srcRangeValue), 3)
-    
-        
-        Call MarkDirectory(directoryPath, filesPattern, srcRangeValue, cellSrcLetter)
-
-    Else
-        MsgBox "Directory at " & directoryCell & " does not exists"
+    ' ##Checks if last char in directory is '\'
+    If Right(directoryPath, 1) <> "\" Then
+        directoryPath = directoryPath & "\"
     End If
-    MessageBox "Finish CalcFilesByDirectory"
     
+     
+    temp = Dir(directoryPath, vbDirectory)
+    
+    If temp <> "" Then
+        workingDirectory = directoryPath
+        IsDirectoryOK = True
+    Else
+       IsDirectoryOK = False
+    End If
+    
+End Function
 
-End Sub
+Private Function ChecksBeforeCopy(checkIndex As Integer, src As String, des As String, row As String) As Boolean
 
-' ### HELP SUBs
+Select Case checkIndex
+    Case 1
+    ' ##Checks if user spesified source file
+        If src = "" Then
+            MsgBox "Missing source file in row " & row
+            ChecksBeforeCopy = False
+        End If
+    Case 2
+    ' ##Checks if user spesified destination file
+        If des = "" Then
+            MsgBox "Missing destination file in row " & row
+            ChecksBeforeCopy = False
+        End If
+    Case 3
+        
+    Case Else
+        ChecksBeforeCopy = True
+    
+End Function
 
-Private Sub MarkFiles(subDirectory As String, filesPattern As String, srcRangeValue As String, cellSrcLetter As String)
+Private Sub MarkFiles(subDirectory As String, srcRangeValue As String)
     
     Dim markingRow As String
     Dim foundVal As String
      
-    fileName = GetFiles(subDirectory, filesPattern)
-    
+    fileName = GetFiles(subDirectory)
+    ' TODO: add if the first one is empy..
     For Each fn In fileName
         If fn <> "" Then
             Set vals = Range(srcRangeValue).Find(fn)
@@ -185,7 +250,7 @@ Private Sub MarkFiles(subDirectory As String, filesPattern As String, srcRangeVa
             
                 Range(markingRow).Value = fn
             Else
-                markingRow = cellSrcLetter & vals.Row
+                markingRow = cellSrcLetter & vals.row
             End If
             
             ' ##Mark existing file in default color
@@ -195,18 +260,17 @@ Private Sub MarkFiles(subDirectory As String, filesPattern As String, srcRangeVa
  
 End Sub
 
-Private Sub MarkDirectory(directory As String, filesPattern As String, srcRangeValue As String, cellSrcLetter As String)
+Private Sub MarkDirectory(directory As String, srcRangeValue As String)
     
     Dim drctVal As String
-    Call MarkFiles(directory, filesPattern, srcRangeValue, cellSrcLetter)
-      
-     myDirectories = GetDirectories(directory)
+  
+    myDirectories = GetDirectories(directory)
       
     For i = 0 To UBound(myDirectories) Step 1
         drctVal = myDirectories(i)
         If drctVal <> "" Then
-            Call MarkFiles(drctVal, filesPattern, srcRangeValue, cellSrcLetter)
-            Call MarkDirectory(drctVal, filesPattern, srcRangeValue, cellSrcLetter)
+            Call MarkFiles(drctVal, srcRangeValue)
+            Call MarkDirectory(drctVal, srcRangeValue)
         End If
     Next
 
@@ -235,19 +299,19 @@ Private Function GetDirectories(path As String) As String()
     GetDirectories = myArray
 End Function
 
-Private Function GetFiles(path As String, pattern As String) As String()
+Private Function GetFiles(path As String) As String()
     
     Dim fullpath As String
     Dim fileName As String
     Dim i As Long
     Dim myArray(1000) As String
  
-    fileName = Dir(path & pattern)
+    fileName = Dir(path & filesPattern)
     
     Do While fileName <> ""
         If fileName <> ".." And fileName <> "." Then
             fullpath = path & fileName
-            If GetAttr(fullpath) = 32 Then
+            If GetAttr(fullpath) <> vbDirectory Then
                 myArray(i) = fullpath
                 i = i + 1
             End If
@@ -269,10 +333,10 @@ Private Sub EditingSheet(setState As Boolean)
     
     If (inDebugMode = False) Then
    
-        'With Application
-        '    .Calculation = xlCalculationManual
-       '     .ScreenUpdating = setState
-        'End With
+        With Application
+            .Calculation = xlCalculationManual
+            .ScreenUpdating = setState
+        End With
         
     End If
     
@@ -294,7 +358,7 @@ End Sub
 
 Private Sub MarkCells(rng As Range, color As String)
     For Each cell In rng
-        If cell.Row <> 3 Then
+        If cell.row <> 3 Then
             cell.Interior.ColorIndex = color
         End If
     Next cell
@@ -304,3 +368,14 @@ Private Sub DeleteRow(rwIndex As Long)
     Call MessageBox("Deleting row  " & rwIndex)
     Range("A" & rwIndex).EntireRow.Delete
 End Sub
+
+Private Function GetLastRow() As Long
+    Dim last As Long
+    last = shtActive.UsedRange.Rows.Count
+    
+    If last < 4 Then
+        last = 4
+    End If
+    
+    GetLastRow = last
+End Function
