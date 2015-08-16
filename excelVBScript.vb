@@ -3,15 +3,17 @@ Public lastWritenInRow As Long
 Public workingDirectory As String
 Public filesPattern As String
 Public cellSrcLetter As String
+Public cellDestLetter As String
+Public cellStatusLetter As String
 
 Private Sub CopyButton_Click()
     inDebugMode = False
-    Call EditingSheet(False)
+    'Call EditingSheet(False)
      
     Call CopyFiles
 
     Call FixAllButtons
-    Call EditingSheet(True)
+    'Call EditingSheet(True)
 End Sub
 
 Private Sub RedButton_Click()
@@ -56,15 +58,13 @@ Sub DeleteRedLines()
     Dim rwIndex As Long
     Dim currentCell As String
     
-    If cellSrcLetter = "" Then
-        Call SetCellSrcLetter
-    End If
+    Call SetLetters
     
     rowCount = GetLastRow
       
     For rwIndex = rowCount To 4 Step -1
         currentCell = cellSrcLetter & rwIndex
-        If Range(currentCell).Interior.ColorIndex = 3 Then
+        If IsRowMarkedRed(rwIndex) Then
             Call DeleteRow(rwIndex)
         End If
     Next
@@ -125,34 +125,53 @@ Sub AddAndMarkFiles()
 End Sub
 
 Private Sub CopyFiles()
-
-
+    
+    Dim rwIndex As Long
+    Call SetLetters
+    
+    lastWritenInRow = GetLastRow
+    
+    For rwIndex = 4 To lastWritenInRow
+        If GetStatusResult(rwIndex) <> 100 And Not IsRowMarkedRed(rwIndex) Then
+            
+            Call CopySingleFile(rwIndex)
+           
+        End If
+    Next
 
 End Sub
 
-Private Sub CopySingleFile(sourceCell As String, destinationCell As String, statusCell As String)
+Private Sub CopySingleFile(rwIndex As Long)
+    
+    Dim srcCell As String
+    Dim dstCell As String
     
     Dim sourceFile As String
     Dim destinationFile As String
-    Dim i As Integer
+    
+    Dim statusIndex As Integer
     Dim rslt As Boolean
-    Dim rowNum As String
+  
+    srcCell = cellSrcLetter & rwIndex
+    dstCell = cellDestLetter & rwIndex
     
-    sourceFile = Range(sourceCell).Value
-    destinationFile = Range(destinationCell).Value
-    i = 1
+    sourceFile = Range(srcCell).Value
+    destinationFile = Range(dstCell).Value
+    
+    ' ##Making sure program can access files
+    statusIndex = 1
     rslt = True
-    rowNum = Right(statusCell, 1)
+    Do While (statusIndex < 4 And rslt)
+        rslt = ChecksBeforeCopy(statusIndex, sourceFile, destinationFile, rwIndex)
+        statusIndex = statusIndex + 1
+    Loop
     
-    
-    Do While (i <> 3 Or Not rslt)
-        rslt = ChecksBeforeCopy(i, sourceFile, destinationFile, rowNum)
-        i = i + 1
-    Next
-    
- 
-    Call FileSystem.FileCopy(sourceFile, destinationFile)
-    
+    If rslt = True Then
+        Call FileSystem.FileCopy(sourceFile, destinationFile)
+        statusIndex = 100
+    End If
+    Call WriteStatusResult(statusIndex, rwIndex)
+
 End Sub
 
 ' ### HELP SUBs
@@ -165,7 +184,7 @@ Private Function GetCurrentActiveRange() As String
     Dim srcRangeValue As String
     
     ' ##Get Configuration
-    Call SetCellSrcLetter
+    Call SetLetters
     srcStartCell = shtConfig.Cells(4, 2).Value 'srcStartCell
     desStartCell = shtConfig.Cells(5, 2).Value 'desStartCell
     
@@ -176,8 +195,10 @@ Private Function GetCurrentActiveRange() As String
     GetCurrentActiveRange = srcRangeValue
 End Function
 
-Private Sub SetCellSrcLetter()
+Private Sub SetLetters()
      cellSrcLetter = shtConfig.Cells(2, 2).Value  'source cell letter
+     cellDestLetter = shtConfig.Cells(6, 2).Value  'destination cell letter
+     cellStatusLetter = shtConfig.Cells(7, 2).Value  'status cell letter
 End Sub
 
 
@@ -210,25 +231,85 @@ Private Function IsDirectoryOK() As Boolean
     
 End Function
 
-Private Function ChecksBeforeCopy(checkIndex As Integer, src As String, des As String, row As String) As Boolean
+Private Function ChecksBeforeCopy(statusIndex As Integer, src As String, des As String, row As Long) As Boolean
+            
+    ChecksBeforeCopy = True
 
-Select Case checkIndex
-    Case 1
-    ' ##Checks if user spesified source file
-        If src = "" Then
-            MsgBox "Missing source file in row " & row
-            ChecksBeforeCopy = False
-        End If
-    Case 2
-    ' ##Checks if user spesified destination file
-        If des = "" Then
-            MsgBox "Missing destination file in row " & row
-            ChecksBeforeCopy = False
-        End If
-    Case 3
+    Select Case statusIndex
+        Case 1
+        ' ##Checks if user spesified source file
+            If src = "" Then
+                MessageBox ("Missing source file in row " & row)
+                ChecksBeforeCopy = False
+            End If
+        Case 2
+        ' ##Checks if user spesified destination file
+            If des = "" Then
+                MessageBox ("Missing destination file in row " & row)
+                ChecksBeforeCopy = False
+            End If
+        Case 3
+            ' ##Checks if source file exists
+            If Dir(src) = "" Then
+                MessageBox ("Source file does not exists in row " & row)
+                ChecksBeforeCopy = False
+            End If
+        Case Else
+            ChecksBeforeCopy = True
         
-    Case Else
-        ChecksBeforeCopy = True
+    End Select
+End Function
+
+Private Sub WriteStatusResult(statusIndex As Integer, rwIndex As Long)
+
+    Dim sttsCell As String
+    sttsCell = cellStatusLetter & rwIndex
+   
+    Select Case statusIndex
+        Case 0
+            Range(sttsCell).Value = "Not yet copied"
+        Case 1
+            Range(sttsCell).Value = "Source file missing"
+        Case 2
+            Range(sttsCell).Value = "Destination file missing"
+        Case 3
+            Range(sttsCell).Value = "Source file does not exists"
+        Case 100
+            Range(sttsCell).Value = "Copied"
+        'Case Else
+            'Range(sttsCell).Value = "Copied"
+    End Select
+End Sub
+
+
+Private Function GetStatusResult(rwIndex As Long) As Integer
+
+    Dim sttsCell As String
+    sttsCell = cellStatusLetter & rwIndex
+   
+    Select Case Range(sttsCell).Value
+        Case "Not yet copied"
+            GetStatusResult = 0
+        Case "Source file missing"
+            GetStatusResult = 1
+        Case "Destination file missing"
+            GetStatusResult = 2
+        Case "Source file does not exists"
+            GetStatusResult = 3
+        Case "Copied"
+            GetStatusResult = 100
+        Case Else
+            GetStatusResult = -1
+    End Select
+    
+End Function
+
+Private Function IsRowMarkedRed(rwIndex As Long) As Boolean
+
+    Dim sttsCell As String
+    sttsCell = cellSrcLetter & rwIndex
+   
+    IsRowMarkedRed = Range(sttsCell).Interior.ColorIndex = 3
     
 End Function
 
