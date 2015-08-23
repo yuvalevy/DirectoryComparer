@@ -11,7 +11,7 @@ Private Sub CopyButton_Click()
     Call LoggingModule.SetDebugMode(False)
     'Call SheetModule.EditingSheet(False)
      
-    Call CopyFiles
+    Call BusinessModule.CopyFiles
 
     Call FixAllButtons
     'Call SheetModule.EditingSheet(True)

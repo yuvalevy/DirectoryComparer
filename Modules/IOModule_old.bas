@@ -26,29 +26,25 @@ End Function
 
 ' ##Whether a certain directory exists
 Public Function DirectoryExists(directoryPath As String) As Boolean
-
-    If GetAttr(directoryPath) = vbDirectory Then
+' ################## REPLACE
+    Dim att As VbFileAttribute
+    att = GetAttr(directoryPath)
+    
+    If ((att = vbDirectory) Or (att = vbDirectory + vbReadOnly) Or (att = vbDirectory + vbSystem + vbHidden)) Then
         DirectoryExists = True
     Else
         DirectoryExists = False
     End If
-
-    ' ## also available by doing this:
-    ' ## I rather not use Dir()
-    'temp = Dir(directoryPath, vbDirectory)
     
-    'If temp <> "" Then
-    '    ProjectDirectoryExists = True
-    'Else
-    '    ProjectDirectoryExists = False
-    'End If
-   
+   Dim FSO As FileSystemObject
+    FSO.FolderExists (DirectoryExists)
+    
 End Function
 
 ' ##Checks if last char in directory is '\'
 ' ##If not, it adds it
 Private Function FixDirectoryPath(directoryPath As String) As String
-    
+' ################## REPLACE not sure this will be needed
     If Right(directoryPath, 1) <> "\" Then
         directoryPath = directoryPath & "\"
     End If
@@ -64,7 +60,7 @@ End Function
 
 ' ##List of validations made on the src & des files
 Public Function ChecksBeforeCopy(statusIndex As Integer, src As String, des As String, row As Long) As Boolean
-            
+' ################## REPLACE
     ChecksBeforeCopy = True
 
     Select Case statusIndex
@@ -86,6 +82,8 @@ Public Function ChecksBeforeCopy(statusIndex As Integer, src As String, des As S
                 LoggingModule.MessageBox ("Source file does not exists in row " & row)
                 ChecksBeforeCopy = False
             End If
+        Case 4
+                    
         Case Else
             ChecksBeforeCopy = True
         
@@ -93,7 +91,7 @@ Public Function ChecksBeforeCopy(statusIndex As Integer, src As String, des As S
 End Function
 
 Public Sub CopySingleFile(rwIndex As Long)
-    
+' ################## REPLACE
     Dim srcCell As String
     Dim dstCell As String
     
@@ -130,7 +128,7 @@ End Sub
 ' ##Directory.GetFolders(path,SearchOptions.AllDirectories)
 ' note: recursion function
 Public Function GetDirectories(directoryPath As String) As String()
-    
+' ################## REPLACE
     Dim fullPath As String
     Dim folderName As String
     Dim i As Long
@@ -157,7 +155,7 @@ End Function
 ' ##Directory.GetFiles(path)
 ' note: pattern included in path parameter
 Private Function GetFiles(path As String) As String()
-    
+' ################## REPLACE
     Dim fullPath As String
     Dim fileName As String
     Dim i As Long
@@ -232,4 +230,29 @@ Public Sub AddAndMarkFiles(subDirectory As String, srcRangeValue As String)
         End If
     Next
  
+End Sub
+
+Private Sub FixFileDirectory()
+    'filePath As String
+    Dim splitedStr() As String
+    Dim combinedPath As String
+    
+    Dim temp As String
+    temp = "C:\Users\Yuval\Documents\Projects\YuvalProject\Yuki\yuvaley.txt"
+    
+    splitedStr = Split(temp, "\")
+
+    For i = LBound(splitedStr) To UBound(splitedStr) - 2
+        combinedPath = combinedPath & splitedStr(i) & "\"
+        
+        'If Not DirectoryExists(combinedPath) Then
+        '    MkDir (combinedPath)
+        'End If
+    Next i
+    
+    MkDir (combinedPath)
+    
+     combinedPath = combinedPath & splitedStr(UBound(splitedStr) - 1) & "\"
+      MkDir (combinedPath)
+   
 End Sub
