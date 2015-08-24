@@ -5,7 +5,7 @@ Attribute VB_Name = "BusinessModule"
 
 ' ##Iterate all directory & files and mark them
 Public Sub AddAndMarkFiles()
-
+    
     Dim srcRangeValue As String
     
     srcRangeValue = Utils.GetCurrentActiveRange
@@ -15,12 +15,11 @@ Public Sub AddAndMarkFiles()
         Call SheetModule.MarkCells(shtActive.Range(srcRangeValue), 3)
         
         ' ##Starting to check all files in directory and subdirectory
-        Call IOModule.AddAndMarkFiles(Utils.WorkingDirectory, srcRangeValue)
-        Call IOModule.MarkSubDirectory(Utils.WorkingDirectory, srcRangeValue)
+        Call IOModule.AddAndMarkFiles
     Else
         MsgBox "Source folder does not exists"
     End If
-
+    
 End Sub
 
 ' ##Copy all files from sheet
@@ -31,7 +30,7 @@ Public Sub CopyFiles()
     Call Utils.SetLetters
     
     For rwIndex = 4 To IOModule.GetLastRow
-        If Utils.GetStatusResult(rwIndex) <> 100 And Not SheetModule.IsRowMarkedRed(rwIndex) Then
+        If Not SheetModule.IsRowMarkedRed(rwIndex) Then
             
             Call IOModule.CopySingleFile(rwIndex)
            
